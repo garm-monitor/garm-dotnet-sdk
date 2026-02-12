@@ -90,5 +90,3 @@ Desenvolvido por [Carlos Miguel](https://www.linkedin.com/in/cg-alvaide/).
 
 ```
 
----
-
