@@ -6,7 +6,7 @@ class Program
     // Mude para static async Task
     static async Task Main(string[] args) 
     {
-        GarmClient.Init("SPvWK8KPVhYE0MmAMbWne1hZexdGApkJOdq8Ra5YFfXvcONhBmWKu31Qd90H", "http://localhost:8000/api");
+        GarmClient.Init("SEU_TOKEN", "http://localhost:8000/api");
 
         Console.WriteLine("Enviando log do .NET...");
 
