@@ -4,89 +4,88 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)
 ![Garm Monitor](https://img.shields.io/badge/Garm-Official%20SDK-0D2538?style=flat-square)
 
-O **SDK Oficial** para integração de aplicações .NET com o ecossistema de monitoramento **Garm Monitor**. Esta biblioteca permite o envio de logs estruturados e metadados de ambiente de forma assíncrona e resiliente.
+O SDK Oficial para integração de aplicações .NET com o ecossistema Garm Monitor. Projetado para ser resiliente, assíncrono e universal, permitindo monitoramento em tempo real com impacto zero na performance da aplicação principal.
 
 ---
 
-## 🚀 Características
+# 🚀 Instalação
 
-* **Multi-plataforma:** Suporte a .NET Standard 2.0 (compatível com .NET Framework 4.6.1+ e .NET Core/Moderno).
-* **Injeção de Dependência:** Integração nativa com `IServiceCollection`.
-* **Performance:** Utiliza `IHttpClientFactory` para gerenciamento eficiente de conexões.
-* **Resiliência:** Fail-safe nativo para garantir que falhas no monitoramento nunca derrubem a aplicação principal.
+Adicione o pacote ao seu projeto (via NuGet):
+```bash
+dotnet add package Garm.sdk
+```
 
-## ⚙️ Configuração
+## ⚙️ Configuração(Boot)
 
-No seu arquivo `Program.cs` (ou `Startup.cs`), adicione o SDK ao container de serviços:
+O Garm utiliza o padrão Singleton. Configure uma única vez no início da sua aplicação (Program.cs) para ativar o monitoramento global e o "Vigia" de exceções.
 
 ```csharp
 using Garm.Sdk;
 
-// Registro do SDK
-builder.Services.AddGarm(options => 
-{
-    options.Token = "seu_token_de_sistema_aqui";
-    options.BaseUrl = "[https://api.garm-monitor.com.br](https://api.garm-monitor.com.br)"; // Ou seu endpoint local
+// Inicializa o SDK
+GarmClient.Init("SEU_TOKEN_DE_SISTEMA", "https://api.garm-monitor.com.br/api");
+
+```
+
+
+# 🐺 Uso Universal (Sintaxe Simplificada)
+
+Após a inicialização, você não precisa injetar classes em todos os lugares. Use o acesso estático para logs rápidos em qualquer parte do código.
+
+```csharp
+// Envio Simples
+GarmClient.Info("Usuário realizou login");
+
+// Envio Crítico com Dados Extras (Payload)
+GarmClient.Critical("Falha na integração de pagamento", new { 
+    OrderId = 1050, 
+    Gateway = "Stripe",
+    Attempt = 3 
 });
 
 ```
 
-## 📝 Como usar
+# 🏗️ Integração com Injeção de Dependência (ASP.NET Core)
 
-O SDK fornece o serviço `GarmClient`, que pode ser injetado em qualquer classe através do construtor.
-
-### Envio de Logs Simples
+Para projetos modernos que utilizam o container nativo do .NET, o SDK oferece suporte total:
 
 ```csharp
-public class MyBusinessService
-{
+// No Program.cs
+builder.Services.AddGarmMonitor("SEU_TOKEN_AQUI");
+
+// No seu Controller ou Service
+public class OrderService {
     private readonly GarmClient _garm;
+    public OrderService(GarmClient garm) => _garm = garm;
 
-    public MyBusinessService(GarmClient garm)
-    {
-        _garm = garm;
-    }
-
-    public async Task ProcessOrder()
-    {
-        // ... lógica de negócio
-        await _garm.InfoAsync("Pedido processado com sucesso.");
+    public async Task Process() {
+        await _garm.SendLog("info", "Processando pedido...");
     }
 }
 
 ```
 
-### Envio de Logs com Payload (Dados Extras)
+# 🛡️ Monitoramento Automático (Vigia)
 
-Você pode enviar objetos anônimos ou classes complexas como payload para facilitar o debug:
+Ao inicializar o SDK, o Garm ativa o monitoramento passivo:
 
-```csharp
-await _garm.CriticalAsync("Falha na conexão com o Banco de Dados", new 
-{ 
-    Server = "10.0.0.50",
-    RetryCount = 3,
-    Exception = ex.Message 
-});
+- Unhandled Exceptions: Captura automática de exceções que derrubariam o App.
 
-```
+- Metadados de SOC: Cada log é enriquecido automaticamente com Versão do Runtime e Sistema Operacional (OS).
 
-## 🔍 Metadados Automáticos
+- Async Nativo: O envio é feito em background, garantindo que o usuário não sinta lentidão.
 
-O SDK captura automaticamente informações do ambiente para cada log enviado, incluindo:
+# 📊 Níveis de Log
 
-* Versão do Runtime .NET
-* Sistema Operacional
-* Hostname da máquina
-* Timestamp UTC
+- Info(): Eventos informativos de rotina.
 
-## 📂 Estrutura do Projeto
+- Warning(): Situações de atenção.
 
-* `src/Garm.Sdk`: Código-fonte da biblioteca.
-* `tests/Garm.Tester`: Aplicação de console para testes de integração.
+- Error(): Falhas em processos específicos.
 
----
+- Critical(): Alerta imediato via Webhook (Discord/Slack) configurado no painel.
+
+
 
 Desenvolvido por [Carlos Miguel](https://www.linkedin.com/in/cg-alvaide/).
-
-```
 

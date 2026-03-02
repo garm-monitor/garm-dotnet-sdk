@@ -1,13 +1,9 @@
-namespace Garm.Sdk;
-
-public class GarmOptions
+namespace Garm.Sdk
 {
-    // O Token é obrigatório
-    public string Token { get; set; } = string.Empty;
-
-    // A URL padrão é a do seu SaaS
-    public string BaseUrl { get; set; } = "https://api.garm-monitor.com.br";
-
-    // Timeout de 3 segundos para não travar o site do cliente
-    public int TimeoutSeconds { get; set; } = 3;
+    public class GarmOptions
+    {
+        public string BaseUrl { get; set; } = "http://127.0.0.1:8000/api";
+        public int TimeoutSeconds { get; set; } = 2;
+        public bool Enabled { get; set; } = true;
+    }
 }

@@ -1,22 +1,20 @@
-using System;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 
 namespace Garm.Sdk
 {
     public static class GarmExtensions
     {
-        // Esse método mágico estende o IServiceCollection
-        public static IServiceCollection AddGarm(this IServiceCollection services, Action<GarmOptions> configure)
+    public static IServiceCollection AddGarmMonitor(this IServiceCollection services, string token, Action<GarmOptions> configureOptions = null)
         {
-            // 1. Cria as opções e roda a configuração que o usuário passou
             var options = new GarmOptions();
-            configure(options);
+            configureOptions?.Invoke(options);
 
-            // 2. Registra as opções para quem precisar
-            services.AddSingleton(options);
+            // 1. Inicializa o Singleton estático do seu SDK
+            GarmClient.Init(token, options.BaseUrl);
 
-            // 3. Registra o GarmClient usando HttpClientFactory
-            services.AddHttpClient<GarmClient>();
+            // 2. Registra a instância no container de dependências para quem quiser usar via Injeção
+            services.AddSingleton(GarmClient.Instance);
 
             return services;
         }

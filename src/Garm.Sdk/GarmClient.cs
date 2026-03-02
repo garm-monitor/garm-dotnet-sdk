@@ -7,82 +7,68 @@ using System.Threading.Tasks;
 namespace Garm.Sdk
 {
     public class GarmClient
-    {
-        private readonly HttpClient _httpClient;
-        private readonly GarmOptions _options;
+    {   
+        // 1. A Instância Única (Singleton) que o GarmExtensions procura
+        public static GarmClient Instance { get; private set; }
 
-        public GarmClient(HttpClient httpClient, GarmOptions options)
+        private readonly string _token;
+        private readonly string _baseUrl;
+        private static readonly HttpClient _httpClient = new HttpClient();
+
+        // 2. Construtor PRIVADO: impede o 'new' fora desta classe
+        private GarmClient(string token, string baseUrl)
         {
-            _httpClient = httpClient;
-            _options = options;
-
-            if (_httpClient.BaseAddress == null)
-            {
-                _httpClient.BaseAddress = new Uri(_options.BaseUrl);
-            }
-
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Garm-DotNet-SDK/1.0");
+            _token = token;
+            _baseUrl = baseUrl.TrimEnd('/');
+            RegisterGlobalHandlers();
         }
 
-        
-        public async Task<bool> LogAsync(string level, string message, object? payload = null)
+        // 3. Inicialização (Boot)
+        public static void Init(string token, string baseUrl = "http://localhost:8000/api")
         {
-            try
+            if (Instance == null)
             {
-                if (string.IsNullOrEmpty(_options.Token)) return false;
-
-                var logEntry = new
-                {
-                    level = level,
-                    message = message,
-                    payload = EnrichPayload(payload)
-                };
-
-                var json = JsonSerializer.Serialize(logEntry);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                var request = new HttpRequestMessage(HttpMethod.Post, "/api/logs");
-                request.Headers.Add("X-Garm-Token", _options.Token);
-                request.Content = content;
-
-                var response = await _httpClient.SendAsync(request);
-
-                return response.IsSuccessStatusCode;
-            }
-            catch (Exception)
-            {
-                return false;
+                Instance = new GarmClient(token, baseUrl);
             }
         }
 
-        // --- Helpers ---
-
-        public Task<bool> InfoAsync(string message, object? payload = null) => LogAsync("info", message, payload);
-        public Task<bool> WarningAsync(string message, object? payload = null) => LogAsync("warning", message, payload);
-        public Task<bool> ErrorAsync(string message, object? payload = null) => LogAsync("error", message, payload);
-        public Task<bool> CriticalAsync(string message, object? payload = null) => LogAsync("critical", message, payload);
-
-        private object EnrichPayload(object? userPayload)
+        // 4. Captura automática de erros
+        private void RegisterGlobalHandlers()
         {
-            try 
-            {
-                return new
-                {
-                    _meta = new
-                    {
-                        dotnet = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
-                        os = System.Runtime.InteropServices.RuntimeInformation.OSDescription,
-                        hostname = System.Net.Dns.GetHostName(),
-                        timestamp = DateTime.UtcNow
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => {
+                _ = SendLog("critical", $"Erro Fatal .NET: {e.ExceptionObject}");
+            };
+        }
+
+        public async Task SendLog(string level, string message, object context = null)
+        {
+            if (string.IsNullOrEmpty(_token)) return;
+
+            var payload = new {
+                level = level.ToLower(),
+                message = message,
+                payload = new {
+                    _meta = new { 
+                        runtime = ".NET", 
+                        os = Environment.OSVersion.ToString(), // Adicionado para o SOC
+                        timestamp = DateTime.UtcNow 
                     },
-                    // Se userPayload for nulo, cria um objeto vazio
-                    data = userPayload ?? new { }
-                };
-            }
-            catch
-            {
-                return new { data = userPayload ?? new { } };
-            }
+                    custom_data = context
+                }
+            };
+
+            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            
+            // Importante: no HttpClient compartilhado, evite limpar headers se houver concorrência
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/logs");
+            request.Content = content;
+            request.Headers.Add("X-Garm-Token", _token);
+
+            try { await _httpClient.SendAsync(request); } catch { }
         }
+
+        // 5. Atalhos Universais (Sintaxe: GarmClient.Critical)
+        public static void Info(string m, object c = null) => _ = Instance?.SendLog("info", m, c);
+        public static void Critical(string m, object c = null) => _ = Instance?.SendLog("critical", m, c);
     }
 }

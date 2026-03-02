@@ -1,48 +1,18 @@
 ﻿using System;
-using Garm.Sdk;
-using Microsoft.Extensions.DependencyInjection;
+using Garm.Sdk; // Importa o seu SDK
 
-// --- Configuração ---
-var services = new ServiceCollection();
-
-services.AddGarm(options =>
+class Program
 {
-    // 👇 Certifique-se de usar um Token válido do seu banco local
-    options.Token = "SEU_TOKEN_VÁLIDO_AQUI"; 
-    options.BaseUrl = "http://localhost:8000/api"; 
-});
-
-var provider = services.BuildServiceProvider();
-
-// --- Execução ---
-Console.WriteLine("🐺 Iniciando Teste do Garm SDK .NET...");
-
-var garm = provider.GetRequiredService<GarmClient>();
-
-try
-{
-    Console.Write("Enviando log... ");
-    
-    // Ajuste de sintaxe para evitar o erro do print
-    var payload = new 
-    { 
-        Driver = "Postgres",
-        Query = "SELECT * FROM users",
-        Detalhe = "Connection Timeout"
-    };
-
-    bool sucesso = await garm.CriticalAsync("Erro Crítico via C#", payload);
-
-    if (sucesso)
+    // Mude para static async Task
+    static async Task Main(string[] args) 
     {
-        Console.WriteLine("✅ SUCESSO! Verifique o Dashboard.");
+        GarmClient.Init("SPvWK8KPVhYE0MmAMbWne1hZexdGApkJOdq8Ra5YFfXvcONhBmWKu31Qd90H", "http://localhost:8000/api");
+
+        Console.WriteLine("Enviando log do .NET...");
+
+        // Use AWAIT para garantir que o programa espere o envio terminar
+        await GarmClient.Instance.SendLog("critical", "Teste SDK .NET Real!");
+
+        Console.WriteLine("Log enviado! Verifique o Dashboard.");
     }
-    else
-    {
-        Console.WriteLine("❌ FALHA! O servidor recusou ou está offline.");
-    }
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"\n❌ ERRO NO TESTE: {ex.Message}");
 }
